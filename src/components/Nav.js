@@ -3,7 +3,6 @@ import clsx from 'clsx';
 
 export default function Nav() {
   const location = useLocation();
-  console.log('pathname', matchPath(location.pathname, '/'));
 
   // Find currently active item by checking
   // which tab route "matches" the current path
