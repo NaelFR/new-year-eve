@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 
 import { auth, googleProvider, db } from '../firebase';
@@ -6,70 +6,71 @@ import Card from '../components/Card';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 
 export default function Admin() {
-  const [user, setUser] = useState({});
+  const [user, setUser] = useState(null);
   const [forfeits, setForfeits] = useState([]);
   // const [isLoading, setIsLoading] = useState(false);
+  const [hasInitialUserLoad, setHasInitialUserLoad] = useState(false);
   const [isLoginLoading, setIsLoginLoading] = useState(false);
 
   const login = async () => {
     setIsLoginLoading(true);
     try {
-      const { user } = await auth.signInWithPopup(googleProvider);
-      const { displayName: name, email, photoURL } = user;
+      await auth.signInWithPopup(googleProvider);
       setIsLoginLoading(false);
-      setUser({ name, email, photoURL });
     } catch (e) {
       console.error(e);
       setIsLoginLoading(false);
     }
   };
 
-  const addForfeit = async (title, description) => {
-    try {
-      await db.collection('forfeits').add({
-        label: title,
-        description: description,
-        creator: user.name,
-      });
-      getForfeits();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const getForfeits = () => {
-    let forfeitsFirestore = [];
-    db.collection('forfeits')
-      .get()
-      .then((querySnapshot) => {
-        querySnapshot.forEach((doc) => {
-          forfeitsFirestore.push({ ...doc.data(), docId: doc.id });
+  const addForfeit = useCallback(
+    async ({ description, title }) => {
+      try {
+        await db.collection('forfeits').add({
+          label: title,
+          description: description,
+          creator: user.displayName,
         });
-        setForfeits(forfeitsFirestore);
-      });
-  };
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    [user],
+  );
 
   const removeForfeit = async (id) => {
     try {
       await db.collection('forfeits').doc(id).delete();
-      setForfeits(forfeits.filter((f) => f.docId !== id));
     } catch (e) {
       console.error(e);
     }
   };
 
   useEffect(() => {
-    if (auth.currentUser) {
-      getForfeits();
-    }
-  }, [auth.currentUser]);
+    const handler = db.collection('forfeits').onSnapshot((snapshot) => {
+      const docs = snapshot.docs.map((snap) => ({
+        ...snap.data(),
+        docId: snap.id,
+      }));
+      setForfeits(docs);
+    });
+    return handler;
+  }, [setForfeits]);
 
   useEffect(() => {
-    if (auth.currentUser) {
-      const { displayName: name, email, photoURL } = auth.currentUser;
-      setUser({ name, email, photoURL });
-    }
+    const handler = auth.onAuthStateChanged((nextUser) => {
+      setUser(nextUser);
+      setHasInitialUserLoad(true);
+      if (nextUser) {
+        setIsLoginLoading(false);
+      }
+    });
+    return handler;
   }, []);
+
+  if (!hasInitialUserLoad) {
+    return <div>LOADING !!!!</div>;
+  }
 
   return (
     <>
@@ -86,8 +87,8 @@ export default function Admin() {
         {user && (
           <div>
             <p className="mb-4">
-              Salut {user.name}, tu peux ajouter un gage (dans la limite du
-              raisonnable)
+              Salut {user.displayName}, tu peux ajouter un gage (dans la limite
+              du raisonnable)
             </p>
             <Formik
               initialValues={{ title: '', description: '' }}
@@ -102,7 +103,7 @@ export default function Admin() {
                 { title, description },
                 { setSubmitting, resetForm },
               ) => {
-                addForfeit(title, description).then(() => {
+                addForfeit({ title, description }).then(() => {
                   setSubmitting(false);
                   resetForm();
                 });
