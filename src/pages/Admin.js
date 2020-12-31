@@ -8,7 +8,6 @@ import GoogleSignInButton from '../components/GoogleSignInButton';
 export default function Admin() {
   const [user, setUser] = useState(null);
   const [forfeits, setForfeits] = useState([]);
-  // const [isLoading, setIsLoading] = useState(false);
   const [hasInitialUserLoad, setHasInitialUserLoad] = useState(false);
   const [isLoginLoading, setIsLoginLoading] = useState(false);
 
@@ -182,10 +181,10 @@ export default function Admin() {
               {forfeits.map(({ creator, label, description, docId }) => (
                 <li className="flex flex-row" key={docId}>
                   <div className="select-none flex justify-between items-center p-4 w-full">
-                    <div className="flex justify-center items-center mr-4 text-sm">
+                    <div className="flex items-center mr-4 text-sm flex-1">
                       <span>{creator}</span>
                     </div>
-                    <div className="pl-1 mr-16">
+                    <div className="pl-1 mr-16 flex-1">
                       <div className="font-medium">{label}</div>
                       <div className="text-gray-600 text-sm">{description}</div>
                     </div>

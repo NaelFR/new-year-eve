@@ -1,5 +1,3 @@
-import { auth, googleProvider } from '../firebase';
-
 export default function GoogleSignInButton({ onClick }) {
   return (
     <button
